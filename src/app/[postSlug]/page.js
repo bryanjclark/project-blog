@@ -1,23 +1,50 @@
-import React from 'react';
+import React, { Suspense } from "react";
+import BlogHero from "@/components/BlogHero";
+import styles from "./postSlug.module.css";
+import { loadBlogPost } from "@/helpers/file-helpers";
+import { MDXRemote } from "next-mdx-remote/rsc";
+import DivisionGroupsDemo from "@/components/DivisionGroupsDemo";
+import CircularColorsDemo from "@/components/CircularColorsDemo";
+import { BLOG_TITLE } from "@/constants";
+import CodeSnippet from "@/components/CodeSnippet";
 
-import BlogHero from '@/components/BlogHero';
+const loadBlogPostCached = React.cache(loadBlogPost);
 
-import styles from './postSlug.module.css';
+export const generateMetadata = async ({ params }) => {
+  const post = await loadBlogPostCached(params.postSlug);
+  const {
+    frontmatter: { title, abstract: description },
+  } = post;
+  return {
+    title: `${title} | ${BLOG_TITLE}`,
+    description,
+  };
+};
 
-function BlogPost() {
+const Components = {
+  CircularColorsDemo,
+  DivisionGroupsDemo,
+  pre: CodeSnippet,
+};
+
+function BlogPost({ params }) {
+  return (
+    <Suspense>
+      <PostContents slug={params.postSlug} />
+    </Suspense>
+  );
+}
+
+async function PostContents({ slug }) {
+  const post = await loadBlogPostCached(slug);
   return (
     <article className={styles.wrapper}>
       <BlogHero
-        title="Example post!"
-        publishedOn={new Date()}
+        title={post.frontmatter.title}
+        publishedOn={post.frontmatter.publishedOn}
       />
       <div className={styles.page}>
-        <p>This is where the blog post will go!</p>
-        <p>
-          You will need to use <em>MDX</em> to render all of
-          the elements created from the blog post in this
-          spot.
-        </p>
+        <MDXRemote source={post.content} components={Components} />
       </div>
     </article>
   );
